@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>d'SIFIR</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <!-- Tailwind CSS is assumed to be available, but adding a fallback just in case -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            touch-action: manipulation;
+            user-select: none;
+            overflow: hidden; /* Prevent scrolling while playing */
+        }
+
+        /* Custom Animations */
+        @keyframes bounce-in {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .animate-bounce-in {
+            animation: bounce-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .animate-shake {
+            animation: shake 0.4s ease-in-out;
+        }
+
+        .animate-pop {
+            animation: pop 0.2s ease-in-out;
+        }
+
+        /* Game Buttons */
+        .btn-answer {
+            transition: all 0.2s;
+            box-shadow: 0 4px 0 #cbd5e1;
+        }
+        .btn-answer:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #cbd5e1;
+        }
+        
+        .btn-primary {
+            box-shadow: 0 6px 0 #e11d48;
+            transition: all 0.2s;
+        }
+        .btn-primary:active {
+            transform: translateY(6px);
+            box-shadow: 0 0 0 #e11d48;
+        }
+
+        /* Progress bar transition */
+        #time-bar {
+            transition: width 0.3s ease-in-out, background-color 0.3s;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Confetti Canvas -->
+    <canvas id="confetti" class="fixed top-0 left-0 w-full h-full pointer-events-none z-50 hidden"></canvas>
+
+    <!-- Main Game Container -->
+    <div id="game-container" class="w-full max-w-md bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden relative border-4 border-white">
+        
+        <!-- ==================== SCREEN 1: START MENU ==================== -->
+        <div id="start-screen" class="flex flex-col items-center justify-center p-8 text-center min-h-[400px] animate-bounce-in">
+            <div class="text-6xl mb-2">🚀</div>
+            <h1 class="text-4xl font-black text-rose-500 mb-2">d'SIFIR!</h1>
+            
+            <div class="bg-amber-100 text-amber-600 px-6 py-2 rounded-2xl font-black text-xl mb-4 flex items-center gap-2 shadow-sm border-2 border-amber-200">
+                <span>🏆 Markah Terkumpul:</span>
+                <span id="total-score-display">0</span>
+            </div>
+
+            <p class="text-sm text-slate-600 mb-4 font-bold">Pilih sifir untuk diuji (10 soalan rawak)</p>
+            
+            <div class="grid grid-cols-3 gap-2 w-full max-w-xs mb-2">
+                <button onclick="startGame(2)" class="btn-primary bg-sky-400 hover:bg-sky-500 text-white font-bold py-2 rounded-xl text-xl">2</button>
+                <button onclick="startGame(3)" class="btn-primary bg-emerald-400 hover:bg-emerald-500 text-white font-bold py-2 rounded-xl text-xl">3</button>
+                <button onclick="startGame(4)" class="btn-primary bg-amber-400 hover:bg-amber-500 text-white font-bold py-2 rounded-xl text-xl">4</button>
+                <button onclick="startGame(5)" class="btn-primary bg-rose-400 hover:bg-rose-500 text-white font-bold py-2 rounded-xl text-xl">5</button>
+                <button onclick="startGame(6)" class="btn-primary bg-fuchsia-400 hover:bg-fuchsia-500 text-white font-bold py-2 rounded-xl text-xl">6</button>
+                <button onclick="startGame(7)" class="btn-primary bg-indigo-400 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-xl">7</button>
+                <button onclick="startGame(8)" class="btn-primary bg-sky-400 hover:bg-sky-500 text-white font-bold py-2 rounded-xl text-xl">8</button>
+                <button onclick="startGame(9)" class="btn-primary bg-emerald-400 hover:bg-emerald-500 text-white font-bold py-2 rounded-xl text-xl">9</button>
+                <button onclick="startGame(10)" class="btn-primary bg-amber-400 hover:bg-amber-500 text-white font-bold py-2 rounded-xl text-xl">10</button>
+                <button onclick="startGame(11)" class="btn-primary bg-rose-400 hover:bg-rose-500 text-white font-bold py-2 rounded-xl text-xl">11</button>
+                <button onclick="startGame(12)" class="btn-primary bg-fuchsia-400 hover:bg-fuchsia-500 text-white font-bold py-2 rounded-xl text-xl col-span-2">12</button>
+            </div>
+        </div>
+
+        <!-- ==================== SCREEN 2: GAMEPLAY ==================== -->
+        <div id="game-screen" class="hidden flex-col min-h-[500px]">
+            <!-- Header (Score & Timer) -->
+            <div class="bg-indigo-500 text-white p-4 rounded-b-3xl shadow-md flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">⭐</span>
+                    <div>
+                        <div class="text-xs font-bold text-indigo-200 uppercase tracking-wider">Markah</div>
+                        <div id="score-display" class="text-2xl font-black leading-none">0</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs font-bold text-indigo-200 uppercase tracking-wider">Soalan</div>
+                    <div id="progress-text" class="text-2xl font-black leading-none">1/10</div>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-200 h-2">
+                <div id="time-bar" class="bg-emerald-400 h-2 w-[10%] rounded-r-full transition-all duration-300"></div>
+            </div>
+
+            <!-- Question Area -->
+            <div class="flex-1 flex flex-col items-center justify-center p-6 relative">
+                <!-- Feedback animation element (+10 / Oops) -->
+                <div id="feedback" class="absolute top-0 text-2xl font-black opacity-0 pointer-events-none transition-opacity duration-300 z-10 text-center bg-white/90 px-4 py-2 rounded-xl shadow-lg"></div>
+                
+                <div class="text-slate-500 font-bold mb-2 uppercase tracking-widest text-sm" id="question-label">Soalan</div>
+                <div id="question-display" class="text-7xl font-black text-slate-800 tracking-tighter drop-shadow-sm mb-8 animate-pop">
+                    7 × 8
+                </div>
+
+                <!-- Answer Buttons Grid (Objektif) -->
+                <div id="mcq-container" class="grid grid-cols-2 gap-4 w-full">
+                    <button class="answer-btn btn-answer bg-amber-300 hover:bg-amber-400 text-amber-900 text-3xl font-black py-6 rounded-2xl"></button>
+                    <button class="answer-btn btn-answer bg-sky-300 hover:bg-sky-400 text-sky-900 text-3xl font-black py-6 rounded-2xl"></button>
+                    <button class="answer-btn btn-answer bg-emerald-300 hover:bg-emerald-400 text-emerald-900 text-3xl font-black py-6 rounded-2xl"></button>
+                    <button class="answer-btn btn-answer bg-fuchsia-300 hover:bg-fuchsia-400 text-fuchsia-900 text-3xl font-black py-6 rounded-2xl"></button>
+                </div>
+
+                <!-- Input Container (Tempat Kosong) -->
+                <div id="input-container" class="hidden w-full flex-col items-center gap-3">
+                    <input type="number" inputmode="numeric" id="answer-input" class="text-center text-4xl font-black text-slate-800 bg-slate-100 border-4 border-indigo-200 rounded-2xl py-4 w-full focus:outline-none focus:border-indigo-500 shadow-inner" placeholder="Taip jawapan...">
+                    <button onclick="checkInputAnswer()" class="btn-primary bg-indigo-500 hover:bg-indigo-600 text-white text-2xl font-bold py-4 rounded-2xl w-full">Semak Jawapan</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== SCREEN 3: RESULT ==================== -->
+        <div id="result-screen" class="hidden flex-col items-center justify-center p-8 text-center min-h-[400px]">
+            <h2 class="text-4xl font-black text-indigo-600 mb-2">Tamat!</h2>
+            <div id="result-emoji" class="text-6xl mb-4">🎉</div>
+            
+            <div class="bg-indigo-100 rounded-2xl p-6 w-full mb-8 shadow-inner">
+                <p class="text-sm font-bold text-indigo-400 uppercase tracking-widest mb-1">Markah Akhir Anda</p>
+                <div id="final-score" class="text-6xl font-black text-indigo-600">0</div>
+                <p class="text-sm font-bold text-indigo-400 mt-1">daripada 100</p>
+                <p id="result-message" class="text-lg font-bold text-indigo-500 mt-4">Hebat!</p>
+            </div>
+
+            <button onclick="showStartScreen()" class="btn-primary bg-indigo-500 hover:bg-indigo-600 text-white text-xl font-bold py-4 px-8 rounded-2xl w-full flex items-center justify-center gap-2">
+                <span>Pilih Sifir Lain</span>
+                <span class="text-2xl">🔄</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Audio Setup
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            const now = audioCtx.currentTime;
+            
+            if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, now); // D5
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.1); // A5
+                gainNode.gain.setValueAtTime(0.3, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.2);
+                gainNode.gain.setValueAtTime(0.3, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'win') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.setValueAtTime(554.37, now + 0.1);
+                osc.frequency.setValueAtTime(659.25, now + 0.2);
+                osc.frequency.setValueAtTime(880, now + 0.3);
+                gainNode.gain.setValueAtTime(0.3, now);
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.6);
+                osc.start(now);
+                osc.stop(now + 0.6);
+            }
+        }
+
+        // Game Variables
+        let score = 0;
+        let currentSifir = 2;
+        let questionsList = [];
+        let currentQuestionIndex = 0;
+        let currentCorrectAnswer = 0;
+        let currentQuestionType = 'mcq'; 
+        const totalQuestions = 10;
+
+        let totalScore = 0;
+        try {
+            totalScore = parseInt(localStorage.getItem('sifirTotalScore')) || 0;
+        } catch(e) {}
+
+        function updateTotalScoreUI() {
+            if (displays.totalScoreDisplay) {
+                displays.totalScoreDisplay.textContent = totalScore;
+            }
+        }
+
+        // DOM Elements
+        const screens = {
+            start: document.getElementById('start-screen'),
+            game: document.getElementById('game-screen'),
+            result: document.getElementById('result-screen')
+        };
+        const displays = {
+            score: document.getElementById('score-display'),
+            progressText: document.getElementById('progress-text'),
+            timeBar: document.getElementById('time-bar'),
+            questionLabel: document.getElementById('question-label'),
+            question: document.getElementById('question-display'),
+            finalScore: document.getElementById('final-score'),
+            resultMessage: document.getElementById('result-message'),
+            resultEmoji: document.getElementById('result-emoji'),
+            feedback: document.getElementById('feedback'),
+            mcqContainer: document.getElementById('mcq-container'),
+            inputContainer: document.getElementById('input-container'),
+            answerInput: document.getElementById('answer-input'),
+            totalScoreDisplay: document.getElementById('total-score-display')
+        };
+        const answerButtons = document.querySelectorAll('.answer-btn');
+
+        updateTotalScoreUI(); // Initialize display on load
+
+        // Allow Enter key
+        displays.answerInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') checkInputAnswer();
+        });
+        
+        function switchScreen(screenName) {
+            screens.start.classList.add('hidden');
+            screens.game.classList.add('hidden');
+            screens.result.classList.add('hidden');
+            
+            screens[screenName].classList.remove('hidden');
+            if(screenName !== 'game') {
+                screens[screenName].classList.remove('animate-bounce-in');
+                void screens[screenName].offsetWidth;
+                screens[screenName].classList.add('animate-bounce-in');
+            }
+        }
+
+        function showStartScreen() {
+            document.getElementById('confetti').classList.add('hidden');
+            switchScreen('start');
+        }
+
+        function startGame(sifir) {
+            initAudio();
+            currentSifir = sifir;
+            score = 0;
+            currentQuestionIndex = 0;
+            displays.score.textContent = score;
+            
+            // Randomize multipliers 1 to 12
+            let multipliers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+            multipliers.sort(() => Math.random() - 0.5);
+            questionsList = multipliers.slice(0, 10);
+            
+            document.getElementById('confetti').classList.add('hidden');
+            switchScreen('game');
+            generateQuestion();
+        }
+
+        function updateProgressUI() {
+            displays.progressText.textContent = `${currentQuestionIndex + 1}/${totalQuestions}`;
+            const percentage = ((currentQuestionIndex) / totalQuestions) * 100;
+            displays.timeBar.style.width = percentage + '%';
+        }
+
+        function generateQuestion() {
+            updateProgressUI();
+            const multiplier = questionsList[currentQuestionIndex];
+            
+            const isReversed = Math.random() > 0.5;
+            const num1 = isReversed ? multiplier : currentSifir;
+            const num2 = isReversed ? currentSifir : multiplier;
+            
+            currentCorrectAnswer = num1 * num2;
+            currentQuestionType = Math.random() > 0.4 ? 'mcq' : 'input';
+
+            const isMissingMultiplier = currentQuestionType === 'input' && Math.random() > 0.5;
+
+            displays.question.classList.remove('animate-pop');
+            void displays.question.offsetWidth;
+            displays.question.classList.add('animate-pop');
+
+            if (isMissingMultiplier) {
+                displays.questionLabel.textContent = "Isi Tempat Kosong";
+                if (isReversed) {
+                    displays.question.textContent = `? × ${num2} = ${num1 * num2}`;
+                } else {
+                    displays.question.textContent = `${num1} × ? = ${num1 * num2}`;
+                }
+                currentCorrectAnswer = multiplier;
+                
+                displays.mcqContainer.classList.add('hidden');
+                displays.inputContainer.classList.remove('hidden');
+                displays.inputContainer.classList.add('flex');
+                displays.answerInput.value = '';
+                displays.answerInput.focus();
+            } else {
+                displays.questionLabel.textContent = "Kira Hasil Darab";
+                displays.question.textContent = `${num1} × ${num2}`;
+
+                if (currentQuestionType === 'mcq') {
+                    displays.mcqContainer.classList.remove('hidden');
+                    displays.inputContainer.classList.add('hidden');
+                    displays.inputContainer.classList.remove('flex');
+                    setupMCQ(currentCorrectAnswer, num1, num2);
+                } else {
+                    displays.mcqContainer.classList.add('hidden');
+                    displays.inputContainer.classList.remove('hidden');
+                    displays.inputContainer.classList.add('flex');
+                    displays.answerInput.value = '';
+                    displays.answerInput.focus();
+                }
+            }
+        }
+
+        function setupMCQ(correct, n1, n2) {
+            let options = [correct];
+            
+            while(options.length < 4) {
+                const errorOffset = Math.floor(Math.random() * 4) + 1;
+                const sign = Math.random() > 0.5 ? 1 : -1;
+                
+                let wrongAnswer;
+                const mistakeType = Math.random();
+                if (mistakeType < 0.3) {
+                    wrongAnswer = correct + (n1 * sign);
+                } else if (mistakeType < 0.6) {
+                    wrongAnswer = correct + (n2 * sign);
+                } else {
+                    wrongAnswer = correct + (errorOffset * sign);
+                }
+
+                if (wrongAnswer > 0 && !options.includes(wrongAnswer)) {
+                    options.push(wrongAnswer);
+                }
+            }
+            options.sort(() => Math.random() - 0.5);
+
+            answerButtons.forEach((btn, index) => {
+                btn.textContent = options[index];
+                btn.onclick = () => checkAnswer(options[index], btn);
+                btn.classList.remove('opacity-50');
+                btn.disabled = false;
+            });
+        }
+
+        function checkInputAnswer() {
+            const val = parseInt(displays.answerInput.value);
+            if (isNaN(val)) {
+                displays.answerInput.classList.add('animate-shake');
+                setTimeout(() => displays.answerInput.classList.remove('animate-shake'), 400);
+                return;
+            }
+            checkAnswer(val, displays.answerInput);
+        }
+
+        function checkAnswer(selectedAnswer, element) {
+            if (currentQuestionType === 'mcq') {
+                answerButtons.forEach(btn => btn.disabled = true);
+            } else {
+                displays.answerInput.disabled = true;
+            }
+
+            if (selectedAnswer === currentCorrectAnswer) {
+                playSound('correct');
+                score += 10;
+                
+                totalScore += 10;
+                try { localStorage.setItem('sifirTotalScore', totalScore); } catch(e) {}
+                updateTotalScoreUI();
+
+                displays.score.textContent = score;
+                displays.score.classList.add('animate-pop');
+                setTimeout(() => displays.score.classList.remove('animate-pop'), 200);
+                
+                showFeedback('Betul! +10', 'text-emerald-500');
+                setTimeout(() => nextQuestion(), 800);
+            } else {
+                playSound('wrong');
+                element.classList.add('opacity-50');
+                document.getElementById('game-container').classList.add('animate-shake');
+                setTimeout(() => document.getElementById('game-container').classList.remove('animate-shake'), 400);
+                
+                showFeedback(`Salah! Jawapan: ${currentCorrectAnswer}`, 'text-rose-500');
+                setTimeout(() => nextQuestion(), 1500);
+            }
+        }
+
+        function nextQuestion() {
+            if (currentQuestionType === 'input') displays.answerInput.disabled = false;
+            currentQuestionIndex++;
+            
+            if (currentQuestionIndex < totalQuestions) {
+                generateQuestion();
+            } else {
+                endGame();
+            }
+        }
+
+        function showFeedback(text, colorClass) {
+            displays.feedback.textContent = text;
+            displays.feedback.className = `absolute top-10 text-xl md:text-2xl font-black pointer-events-none transition-all duration-300 opacity-100 transform -translate-y-4 ${colorClass} bg-white/95 px-6 py-3 rounded-2xl shadow-xl z-20`;
+            
+            setTimeout(() => {
+                displays.feedback.classList.remove('opacity-100', '-translate-y-4');
+                displays.feedback.classList.add('opacity-0');
+            }, 1200);
+        }
+
+        function endGame() {
+            displays.timeBar.style.width = '100%';
+            displays.finalScore.textContent = score;
+            
+            let message = "";
+            let emoji = "";
+            if (score === 100) {
+                playSound('win');
+                message = "Sempurna! Anda Pakar Sifir! 🏆";
+                emoji = "👑";
+                startConfetti();
+            } else if (score >= 70) {
+                playSound('win');
+                message = "Hebat! Hampir Sempurna! 👍";
+                emoji = "🌟";
+                startConfetti();
+            } else if (score >= 40) {
+                message = "Usaha Yang Baik! Terus Berlatih! 💪";
+                emoji = "🎯";
+            } else {
+                message = "Jangan Putus Asa! Cuba Lagi! 📚";
+                emoji = "💪";
+            }
+            
+            displays.resultMessage.textContent = message;
+            displays.resultEmoji.textContent = emoji;
+            switchScreen('result');
+        }
+
+        // --- Confetti Implementation ---
+        function startConfetti() {
+            const canvas = document.getElementById('confetti');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            canvas.classList.remove('hidden');
+
+            const pieces = [];
+            const colors = ['#fde047', '#38bdf8', '#34d399', '#f472b6', '#fb7185'];
+
+            for (let i = 0; i < 100; i++) {
+                pieces.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height - canvas.height,
+                    size: Math.random() * 10 + 5,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    speedY: Math.random() * 3 + 2,
+                    speedX: Math.random() * 2 - 1,
+                    rotation: Math.random() * 360,
+                    rotationSpeed: Math.random() * 5 - 2.5
+                });
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let active = false;
+                pieces.forEach(p => {
+                    p.y += p.speedY;
+                    p.x += p.speedX;
+                    p.rotation += p.rotationSpeed;
+
+                    if (p.y < canvas.height) active = true;
+
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rotation * Math.PI / 180);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+                    ctx.restore();
+                });
+
+                if (active) {
+                    requestAnimationFrame(animate);
+                } else {
+                    canvas.classList.add('hidden');
+                }
+            }
+            animate();
+        }
+    </script>
+</body>
+</html>
