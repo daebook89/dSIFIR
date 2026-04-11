@@ -87,9 +87,15 @@
             <div class="text-6xl mb-2">🚀</div>
             <h1 class="text-4xl font-black text-rose-500 mb-2">d'SIFIR!</h1>
             
-            <div class="bg-amber-100 text-amber-600 px-6 py-2 rounded-2xl font-black text-xl mb-4 flex items-center gap-2 shadow-sm border-2 border-amber-200">
-                <span>🏆 Markah Terkumpul:</span>
-                <span id="total-score-display">0</span>
+            <div class="flex flex-col gap-2 w-full max-w-xs mb-6">
+                <div class="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl font-bold flex justify-between items-center shadow-sm border-2 border-emerald-200">
+                    <span>🌟 Hari Ini:</span>
+                    <span id="daily-score-display" class="text-xl font-black">0</span>
+                </div>
+                <div class="bg-amber-100 text-amber-700 px-4 py-2 rounded-xl font-bold flex justify-between items-center shadow-sm border-2 border-amber-200">
+                    <span>🏆 Terkumpul:</span>
+                    <span id="total-score-display" class="text-xl font-black">0</span>
+                </div>
             </div>
 
             <p class="text-sm text-slate-600 mb-4 font-bold">Pilih sifir untuk diuji (10 soalan rawak)</p>
@@ -234,14 +240,30 @@
         const totalQuestions = 10;
 
         let totalScore = 0;
+        let dailyScore = 0;
+        
+        const getTodayString = () => {
+            const d = new Date();
+            return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+        };
+
         try {
             totalScore = parseInt(localStorage.getItem('sifirTotalScore')) || 0;
+            const savedDate = localStorage.getItem('sifirLastPlayedDate');
+            const today = getTodayString();
+            
+            if (savedDate === today) {
+                dailyScore = parseInt(localStorage.getItem('sifirDailyScore')) || 0;
+            } else {
+                dailyScore = 0;
+                localStorage.setItem('sifirLastPlayedDate', today);
+                localStorage.setItem('sifirDailyScore', 0);
+            }
         } catch(e) {}
 
-        function updateTotalScoreUI() {
-            if (displays.totalScoreDisplay) {
-                displays.totalScoreDisplay.textContent = totalScore;
-            }
+        function updateScoresUI() {
+            if (displays.totalScoreDisplay) displays.totalScoreDisplay.textContent = totalScore;
+            if (displays.dailyScoreDisplay) displays.dailyScoreDisplay.textContent = dailyScore;
         }
 
         // DOM Elements
@@ -263,11 +285,12 @@
             mcqContainer: document.getElementById('mcq-container'),
             inputContainer: document.getElementById('input-container'),
             answerInput: document.getElementById('answer-input'),
-            totalScoreDisplay: document.getElementById('total-score-display')
+            totalScoreDisplay: document.getElementById('total-score-display'),
+            dailyScoreDisplay: document.getElementById('daily-score-display')
         };
         const answerButtons = document.querySelectorAll('.answer-btn');
 
-        updateTotalScoreUI(); // Initialize display on load
+        updateScoresUI(); // Initialize display on load
 
         // Allow Enter key
         displays.answerInput.addEventListener('keypress', function (e) {
@@ -418,8 +441,18 @@
                 score += 10;
                 
                 totalScore += 10;
-                try { localStorage.setItem('sifirTotalScore', totalScore); } catch(e) {}
-                updateTotalScoreUI();
+                dailyScore += 10;
+                try { 
+                    const currentDay = getTodayString();
+                    // Semak jika hari dah bertukar masa tengah main
+                    if (localStorage.getItem('sifirLastPlayedDate') !== currentDay) {
+                        dailyScore = 10;
+                        localStorage.setItem('sifirLastPlayedDate', currentDay);
+                    }
+                    localStorage.setItem('sifirTotalScore', totalScore); 
+                    localStorage.setItem('sifirDailyScore', dailyScore);
+                } catch(e) {}
+                updateScoresUI();
 
                 displays.score.textContent = score;
                 displays.score.classList.add('animate-pop');
